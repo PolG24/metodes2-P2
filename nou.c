@@ -23,6 +23,11 @@ double fy(double x, double y)
     return -16 * pow(y, 3) - 12 * pow(x, 2) * y + 22 * x * y + 6 * y + 0.2;
 }
 
+// Function to calculate the determinant of a 2x2 matrix
+double determinant_2x2(double matrix[4]) {
+    return matrix[0] * matrix[3] - matrix[1] * matrix[2];
+}
+
 // Newton method to find y for a given x such that f(x, y) = 0
 double newton_method(double (*f)(double, double), double (*df)(double, double), double x0, double y_start)
 {
@@ -48,7 +53,7 @@ double two_d_newton_method(double (*f)(double, double), double (*fx)(double, dou
         DF[3] = 2 * (pred[1] - prev[1]);
         
         // Compute the determinant of DF
-        det = determinant(DF[0], DF[1], DF[2], DF[3]);
+        det = determinant_2x2(DF);
         if (fabs(det) < TOL) {
             printf("The determinant is too close to zero!\n");
             return -1;
@@ -77,47 +82,62 @@ double two_d_newton_method(double (*f)(double, double), double (*fx)(double, dou
     }
 
     printf("Maximum iterations reached without convergence.\n");
-    return -1; // or some other error code to indicate failure
+    return -1;
+}
+
+void tangent_vector(double (*fx)(double, double), double (*fy)(double, double), double x, double y, double *tangent_x, double *tangent_y) {
+    // Calculate the gradient
+    *tangent_x = fx(x, y);
+    *tangent_y = fy(x, y);
+
+    // Calculate an orthogonal vector to the gradient
+    double temp = *tangent_x;
+    *tangent_x = -*tangent_y;
+    *tangent_y = temp;
+
+    // Compute the norm of the orthogonal vector
+    double norm = sqrt(*tangent_x * *tangent_x + *tangent_y * *tangent_y);
+
+    // Normalize the orthogonal vector to get the unit tangent vector
+    *tangent_x = *tangent_x / norm;
+    *tangent_y = *tangent_y / norm;
 }
 
 // Predictor-corrector method
-void predictor_corrector(double (*func)(double, double), double h, int nc, double err, int nn, double *points)
+void predictor_corrector(double (*f)(double, double),
+                         double (*fx)(double, double),
+                         double (*fy)(double, double),
+                         double h, int nc, double err, int nn, double *points)
 {
-    double x = 0.0, y = newton_method(func, fy, 0.0, 0.0); // Start at (0, y0)
-    printf("Starting y: %e", y);
-    points[0] = x;
-    points[1] = y;
+    double prev[2], pred[2];
+    prev[0] = 0.0;
+    prev[1] = newton_method(f, fy, 0.0, 0.0); // Start at (0, y0)
+    printf("Starting y: %e\n", prev[1]);
+    points[0] = prev[0];
+    points[1] = prev[1];
+
+    // Find the tangent vector at (x, y)
+    double tangent_x, tangent_y;
 
     for (int i = 1; i < nc; ++i)
     {
-        double x_pred = x + h;
-        double y_pred = y; // Initial prediction
+        tangent_vector(fx, fy, prev[0], prev[1], &tangent_x, &tangent_y);
+        printf("The number %d unitary tangent vector is: (%e, %e)\n", i, tangent_x, tangent_y);
+        pred[0] = prev[0] + h * tangent_x;
+        pred[1] = prev[1] + h * tangent_y;
 
-        // Corrector step
-        for (int j = 0; j < nn; ++j)
-        {
-            double f_val = func(x_pred, y_pred);
-            double fy_val = fy(x_pred, y_pred);
-            if (fabs(f_val) < err)
-            {
-                break;
-            }
-            y_pred = y_pred - f_val / fy_val;
-        }
+        printf("Initial prediction: (%e, %e)\n", pred[0], pred[1]);
+        two_d_newton_method(f, fx, fy, pred, prev, h);
+        printf("Adjusted prediction: (%e, %e)\n", pred[0], pred[1]);
 
-        if (fabs(func(x_pred, y_pred)) >= err)
-        {
-            printf("Failed to converge at step %d\n", i);
-            break;
-        }
+        prev[0] = pred[0];
+        prev[1] = pred[1];
+        
+        points[2 * i] = pred[0];
+        points[2 * i + 1] = pred[1];
 
-        x = x_pred;
-        y = y_pred;
-        points[2 * i] = x;
-        points[2 * i + 1] = y;
-
-        // Check if we are close to the starting point (closed curve)
-        if (i > 1 && fabs(x - points[0]) < h && fabs(y - points[1]) < h)
+        // Check if we are close to the starting point (closed curve) 
+        if (i > 1 && fabs(pred[0] - points[0]) < h && fabs(pred[1] - points[1]) < h)
         {
             printf("Closed curve completed\n");
             break;
@@ -131,8 +151,8 @@ int main()
     int nc, nn;
 
     // Example input values, these should be taken from user input
-    h = 0.01;      // Step size
-    nc = 160;      // Max number of points
+    h = 0.09;      // Step size
+    nc = 160000;      // Max number of points
     err = 1e-6;    // Maximum allowed error
     nn = 10000000; // Number of iterations in corrector method
 
@@ -143,7 +163,7 @@ int main()
         return 1;
     }
 
-    predictor_corrector(f, h, nc, err, nn, points);
+    predictor_corrector(f, fx, fy, h, nc, err, nn, points);
 
     // Write points to file
     FILE *file = fopen("curve_points.txt", "w");
