@@ -24,7 +24,8 @@ double fy(double x, double y)
 }
 
 // Function to calculate the determinant of a 2x2 matrix
-double determinant_2x2(double matrix[4]) {
+double determinant_2x2(double matrix[4])
+{
     return matrix[0] * matrix[3] - matrix[1] * matrix[2];
 }
 
@@ -41,20 +42,23 @@ double newton_method(double (*f)(double, double), double (*df)(double, double), 
 
 // Two dimensional Newton Method
 double two_d_newton_method(double (*f)(double, double), double (*fx)(double, double),
-                           double (*fy)(double, double), double *pred, double *prev, double h) {
+                           double (*fy)(double, double), double *pred, double *prev, double h)
+{
     int iter = 0;
     double DF[4], inverse[4], result[2], det;
 
-    while (iter < MAX_ITER) {
+    while (iter < MAX_ITER)
+    {
         // Compute the Jacobian matrix DF
         DF[0] = fx(pred[0], pred[1]);
         DF[1] = fy(pred[0], pred[1]);
         DF[2] = 2 * (pred[0] - prev[0]);
         DF[3] = 2 * (pred[1] - prev[1]);
-        
+
         // Compute the determinant of DF
         det = determinant_2x2(DF);
-        if (fabs(det) < TOL) {
+        if (fabs(det) < TOL)
+        {
             printf("The determinant is too close to zero!\n");
             return -1;
         }
@@ -70,7 +74,8 @@ double two_d_newton_method(double (*f)(double, double), double (*fx)(double, dou
         result[1] = pow((pred[0] - prev[0]), 2) + pow((pred[1] - prev[1]), 2) - h * h;
 
         // Check for convergence
-        if (fabs(result[0]) < TOL && fabs(result[1]) < TOL) {
+        if (fabs(result[0]) < TOL && fabs(result[1]) < TOL)
+        {
             return 0; // Converged successfully
         }
 
@@ -85,7 +90,8 @@ double two_d_newton_method(double (*f)(double, double), double (*fx)(double, dou
     return -1;
 }
 
-void tangent_vector(double (*fx)(double, double), double (*fy)(double, double), double x, double y, double *tangent_x, double *tangent_y) {
+void tangent_vector(double (*fx)(double, double), double (*fy)(double, double), double x, double y, double *tangent_x, double *tangent_y)
+{
     // Calculate the gradient
     *tangent_x = fx(x, y);
     *tangent_y = fy(x, y);
@@ -132,12 +138,12 @@ void predictor_corrector(double (*f)(double, double),
 
         prev[0] = pred[0];
         prev[1] = pred[1];
-        
+
         points[2 * i] = pred[0];
         points[2 * i + 1] = pred[1];
 
-        // Check if we are close to the starting point (closed curve) 
-        if (i > 1 && fabs(pred[0] - points[0]) < h && fabs(pred[1] - points[1]) < h)
+        // Check if we are close to the starting point (closed curve)
+        if (i > 1 && sqrt(pow(pred[0] - points[0], 2) + pow(pred[1] - points[1], 2)) < h)
         {
             printf("Closed curve completed\n");
             break;
@@ -145,8 +151,10 @@ void predictor_corrector(double (*f)(double, double),
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 5) {
+int main(int argc, char *argv[])
+{
+    if (argc != 5)
+    {
         printf("Usage: %s <h> <nc> <err> <nn>\n", argv[0]);
         return 1;
     }
@@ -155,10 +163,10 @@ int main(int argc, char *argv[]) {
     int nc, nn;
 
     // Convert command line arguments to appropriate data types
-    h = atof(argv[1]); // Step size
-    nc = atoi(argv[2]); // Max number of points
+    h = atof(argv[1]);   // Step size
+    nc = atoi(argv[2]);  // Max number of points
     err = atof(argv[3]); // Maximum allowed error
-    nn = atoi(argv[4]); // Number of iterations in corrector method
+    nn = atoi(argv[4]);  // Number of iterations in corrector method
 
     double *points = (double *)malloc(2 * nc * sizeof(double));
     if (points == NULL)
