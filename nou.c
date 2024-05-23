@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 
 #define TOL 1e-10
 #define MAX_ITER 1000
@@ -113,32 +114,54 @@ void tangent_vector(double (*fx)(double, double), double (*fy)(double, double), 
 void predictor_corrector(double (*f)(double, double),
                          double (*fx)(double, double),
                          double (*fy)(double, double),
-                         double h, int nc, double err, int nn, double *points)
+                         double h, int nc, double err, int nn, double *points, bool verbose)
 {
+    // Use prev to store the previous point, pred to store the prediction
     double prev[2], pred[2];
+
+    // The first point is found taking x = 0 and using Newton's method to find y
     prev[0] = 0.0;
-    prev[1] = newton_method(f, fy, 0.0, 0.0); // Start at (0, y0)
-    printf("Starting y: %e\n", prev[1]);
+    prev[1] = newton_method(f, fy, 0.0, 0.0);
+    if (verbose)
+    {
+        printf("Starting point: (%e, %e)\n", prev[0], prev[1]);
+    }
+
+    // Save the first point to the points array
     points[0] = prev[0];
     points[1] = prev[1];
 
-    // Find the tangent vector at (x, y)
     double tangent_x, tangent_y;
 
     for (int i = 1; i < nc; ++i)
     {
+        // Find the tangent vector at (x, y)
         tangent_vector(fx, fy, prev[0], prev[1], &tangent_x, &tangent_y);
-        printf("The number %d unitary tangent vector is: (%e, %e)\n", i, tangent_x, tangent_y);
+        if (verbose)
+        {
+            printf("The number %d unitary tangent vector is: (%e, %e)\n", i, tangent_x, tangent_y);
+        }
+
+        // Use the tangent vector to predict the next point
         pred[0] = prev[0] + h * tangent_x;
         pred[1] = prev[1] + h * tangent_y;
-
-        printf("Initial prediction: (%e, %e)\n", pred[0], pred[1]);
+        if (verbose)
+        {
+            printf("Initial prediction: (%e, %e)\n", pred[0], pred[1]);
+        }
+        
+        // Use the two dimensional Newton method to correct the prediction
         two_d_newton_method(f, fx, fy, pred, prev, h);
-        printf("Adjusted prediction: (%e, %e)\n", pred[0], pred[1]);
-
+        if (verbose)
+        {
+            printf("Adjusted prediction: (%e, %e)\n", pred[0], pred[1]);
+        }
+            
+        // Update the previous prediction for the next iteration
         prev[0] = pred[0];
         prev[1] = pred[1];
 
+        // Save the predicted point to the points array
         points[2 * i] = pred[0];
         points[2 * i + 1] = pred[1];
 
@@ -168,6 +191,12 @@ int main(int argc, char *argv[])
     err = atof(argv[3]); // Maximum allowed error
     nn = atoi(argv[4]);  // Number of iterations in corrector method
 
+    if (h <= 0 || nc <= 0 || err <= 0 || nn <= 0)
+    {
+        printf("All input parameters must be positive.\n");
+        return 1;
+    }
+
     double *points = (double *)malloc(2 * nc * sizeof(double));
     if (points == NULL)
     {
@@ -175,7 +204,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    predictor_corrector(f, fx, fy, h, nc, err, nn, points);
+    predictor_corrector(f, fx, fy, h, nc, err, nn, points, true);
 
     // Write points to file
     FILE *file = fopen("curve_points.txt", "w");
