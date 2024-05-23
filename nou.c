@@ -35,6 +35,9 @@ double newton_method(double (*f)(double, double), double (*df)(double, double), 
     double y = y_start;
     while (fabs(f(x0, y)) > err)
     {
+        // In our very particular case there is no need to check that this denominator is non-zero, so
+        // we don't to negligibly improve efficiency. This could cause problems for functions, x0 and y_start
+        // different to the ones used.
         y -= f(x0, y) / df(x0, y);
     }
     return y;
@@ -44,10 +47,10 @@ double newton_method(double (*f)(double, double), double (*df)(double, double), 
 double two_d_newton_method(double (*f)(double, double), double (*fx)(double, double),
                            double (*fy)(double, double), double *pred, double *prev, double h, double err, int nn)
 {
-    int iter = 0;
+    int i = 0;
     double DF[4], inverse[4], result[2], det;
 
-    while (iter < nn)
+    while (i < nn)
     {
         // Compute the Jacobian matrix DF
         DF[0] = fx(pred[0], pred[1]);
@@ -57,6 +60,9 @@ double two_d_newton_method(double (*f)(double, double), double (*fx)(double, dou
 
         // Compute the determinant of DF
         det = determinant_2x2(DF);
+
+        // Check whether the determinant is too close to zero
+        // (division by zero issues could arise)
         if (fabs(det) < TOL)
         {
             printf("The determinant is too close to zero!\n");
@@ -83,7 +89,7 @@ double two_d_newton_method(double (*f)(double, double), double (*fx)(double, dou
         pred[0] = pred[0] - (inverse[0] * result[0] + inverse[1] * result[1]);
         pred[1] = pred[1] - (inverse[2] * result[0] + inverse[3] * result[1]);
 
-        iter++;
+        i++;
     }
 
     printf("Maximum iterations (nn) reached without convergence.\n");
@@ -196,6 +202,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    // Allocate dynamic memory to store the points in case we wish to compute a fine curve
     double *points = (double *)malloc(2 * nc * sizeof(double));
     if (points == NULL)
     {
@@ -203,6 +210,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    // Run the predictor corrector algorithm
     predictor_corrector(f, fx, fy, h, nc, err, nn, points, false);
 
     // Write points to file
@@ -215,6 +223,10 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < nc; ++i)
     {
+        // All points have been mallocked to zeroes, if the curve is closed before we
+        // fill the points array we want to ignore these zeroes. This assumes our curve
+        // does not approach (0, 0), which is true in our case.
+        if (points[2 * i] == 0 && points[2 * i + 1] == 0) break;
         fprintf(file, "%lf %lf\n", points[2 * i], points[2 * i + 1]);
     }
 
