@@ -145,16 +145,20 @@ void predictor_corrector(double (*f)(double, double),
     }
 }
 
-int main()
-{
+int main(int argc, char *argv[]) {
+    if (argc != 5) {
+        printf("Usage: %s <h> <nc> <err> <nn>\n", argv[0]);
+        return 1;
+    }
+
     double h, err;
     int nc, nn;
 
-    // Example input values, these should be taken from user input
-    h = 0.09;      // Step size
-    nc = 160000;      // Max number of points
-    err = 1e-6;    // Maximum allowed error
-    nn = 10000000; // Number of iterations in corrector method
+    // Convert command line arguments to appropriate data types
+    h = atof(argv[1]); // Step size
+    nc = atoi(argv[2]); // Max number of points
+    err = atof(argv[3]); // Maximum allowed error
+    nn = atoi(argv[4]); // Number of iterations in corrector method
 
     double *points = (double *)malloc(2 * nc * sizeof(double));
     if (points == NULL)
