@@ -4,7 +4,6 @@
 #include <stdbool.h>
 
 #define TOL 1e-10
-#define MAX_ITER 1000
 
 // Define the function f(x, y)
 double f(double x, double y)
@@ -31,10 +30,10 @@ double determinant_2x2(double matrix[4])
 }
 
 // Newton method to find y for a given x such that f(x, y) = 0
-double newton_method(double (*f)(double, double), double (*df)(double, double), double x0, double y_start)
+double newton_method(double (*f)(double, double), double (*df)(double, double), double x0, double y_start, double err)
 {
     double y = y_start;
-    while (fabs(f(x0, y)) > TOL)
+    while (fabs(f(x0, y)) > err)
     {
         y -= f(x0, y) / df(x0, y);
     }
@@ -43,12 +42,12 @@ double newton_method(double (*f)(double, double), double (*df)(double, double), 
 
 // Two dimensional Newton Method
 double two_d_newton_method(double (*f)(double, double), double (*fx)(double, double),
-                           double (*fy)(double, double), double *pred, double *prev, double h)
+                           double (*fy)(double, double), double *pred, double *prev, double h, double err, int nn)
 {
     int iter = 0;
     double DF[4], inverse[4], result[2], det;
 
-    while (iter < MAX_ITER)
+    while (iter < nn)
     {
         // Compute the Jacobian matrix DF
         DF[0] = fx(pred[0], pred[1]);
@@ -75,7 +74,7 @@ double two_d_newton_method(double (*f)(double, double), double (*fx)(double, dou
         result[1] = pow((pred[0] - prev[0]), 2) + pow((pred[1] - prev[1]), 2) - h * h;
 
         // Check for convergence
-        if (fabs(result[0]) < TOL && fabs(result[1]) < TOL)
+        if (sqrt(result[0] * result[0] + result[1] * result[1]) < err)
         {
             return 0; // Converged successfully
         }
@@ -87,7 +86,7 @@ double two_d_newton_method(double (*f)(double, double), double (*fx)(double, dou
         iter++;
     }
 
-    printf("Maximum iterations reached without convergence.\n");
+    printf("Maximum iterations (nn) reached without convergence.\n");
     return -1;
 }
 
@@ -121,7 +120,7 @@ void predictor_corrector(double (*f)(double, double),
 
     // The first point is found taking x = 0 and using Newton's method to find y
     prev[0] = 0.0;
-    prev[1] = newton_method(f, fy, 0.0, 0.0);
+    prev[1] = newton_method(f, fy, 0.0, 0.0, err);
     if (verbose)
     {
         printf("Starting point: (%e, %e)\n", prev[0], prev[1]);
@@ -149,14 +148,14 @@ void predictor_corrector(double (*f)(double, double),
         {
             printf("Initial prediction: (%e, %e)\n", pred[0], pred[1]);
         }
-        
+
         // Use the two dimensional Newton method to correct the prediction
-        two_d_newton_method(f, fx, fy, pred, prev, h);
+        two_d_newton_method(f, fx, fy, pred, prev, h, err, nn);
         if (verbose)
         {
             printf("Adjusted prediction: (%e, %e)\n", pred[0], pred[1]);
         }
-            
+
         // Update the previous prediction for the next iteration
         prev[0] = pred[0];
         prev[1] = pred[1];
@@ -204,7 +203,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    predictor_corrector(f, fx, fy, h, nc, err, nn, points, true);
+    predictor_corrector(f, fx, fy, h, nc, err, nn, points, false);
 
     // Write points to file
     FILE *file = fopen("curve_points.txt", "w");
